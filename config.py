@@ -18,9 +18,9 @@ COURSE_INFO_PATH = KNOWLEDGE_BASE_DIR / "course_info.json"
 
 # --- OpenAI ---
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-LLM_MODEL = "gpt-4o-mini"
+LLM_MODEL = "gpt-4o"
 LLM_TEMPERATURE = 0.3
-EMBEDDING_MODEL = "text-embedding-3-small"
+EMBEDDING_MODEL = "text-embedding-3-large"
 
 # --- RAG ---
 CHUNK_SIZE = 1000
