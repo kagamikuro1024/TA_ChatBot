@@ -1,0 +1,263 @@
+# 🎓 AI Trợ Giảng (Online TA) - Implementation Plan
+
+## Mô tả tổng quan
+
+Xây dựng hệ thống **AI Online TA** hoạt động 24/7 cho khóa học **"Lập trình C/C++ cơ bản"**, sử dụng **OpenAI GPT-4o-mini** với kiến trúc **LangGraph Agent + RAG** và giao diện web **Streamlit**.
+
+## Kiến trúc hệ thống
+
+```mermaid
+graph TD
+    A[👨‍🎓 Học viên] -->|Gửi câu hỏi| B[Streamlit Web UI]
+    B --> C[LangGraph Agent]
+    C --> D{Phân luồng câu hỏi}
+    
+    D -->|Câu hỏi thủ tục/tài liệu| E[🔍 search_course_materials]
+    D -->|Lỗi code / debug| F[🐛 analyze_code_error]
+    D -->|Thông tin khóa học| G[📋 get_course_info]
+    D -->|Quá phức tạp| H[🚨 escalate_to_human_ta]
+    D -->|Không liên quan| I[❌ Từ chối lịch sự]
+    
+    E --> J[(FAISS Vector Store)]
+    J --> K[Knowledge Base]
+    K --> K1[📑 Slides bài giảng]
+    K --> K2[💻 Code mẫu]
+    K --> K3[❓ FAQ]
+    K --> K4[📖 Tài liệu tham khảo]
+    
+    F --> L[GPT-4o-mini Code Analysis]
+    G --> M[Course Metadata JSON]
+    H --> N[📧 Escalation Report]
+    
+    C -->|Phản hồi| B
+    B -->|Hiển thị| A
+```
+
+---
+
+## Proposed Changes
+
+### Component 1: Project Foundation
+
+#### [NEW] requirements.txt
+Các dependencies chính:
+```
+langchain>=0.3.0
+langchain-openai>=0.2.0
+langchain-community>=0.3.0
+langgraph>=0.2.0
+faiss-cpu>=1.8.0
+python-dotenv>=1.0.0
+streamlit>=1.40.0
+```
+
+#### [NEW] .gitignore
+Ignore `.env`, `__pycache__`, `faiss_index/`, `.venv/`
+
+---
+
+### Component 2: Knowledge Base (Tài liệu khóa học)
+
+> [!IMPORTANT]
+> Đây là phần cốt lõi quyết định chất lượng trả lời. Tài liệu càng phong phú, Agent trả lời càng chính xác.
+
+#### [NEW] knowledge_base/slides/
+Tài liệu bài giảng dạng Markdown, chia theo chủ đề:
+- `01_introduction.md` — Giới thiệu C/C++, cài đặt môi trường
+- `02_variables_datatypes.md` — Biến, kiểu dữ liệu, nhập xuất
+- `03_control_flow.md` — Câu lệnh điều kiện, vòng lặp
+- `04_functions.md` — Hàm, tham số, giá trị trả về
+- `05_arrays_strings.md` — Mảng, chuỗi ký tự
+- `06_pointers.md` — Con trỏ, quản lý bộ nhớ
+- `07_structs.md` — Struct, typedef
+- `08_file_io.md` — Đọc ghi file
+
+#### [NEW] knowledge_base/code_samples/
+Code mẫu cho từng chủ đề (`.c` files)
+
+#### [NEW] knowledge_base/faq.md
+Các câu hỏi thường gặp (FAQ) với câu trả lời chuẩn
+
+#### [NEW] knowledge_base/course_info.json
+Metadata khóa học: lịch học, link tài liệu, thông tin TA, quy chế,...
+
+---
+
+### Component 3: RAG Pipeline (Vector Store)
+
+#### [NEW] rag/indexer.py
+Script nạp tài liệu vào FAISS vector store:
+- Dùng `RecursiveCharacterTextSplitter` hoặc `MarkdownHeaderTextSplitter` để chia nhỏ tài liệu
+- Embed bằng `OpenAIEmbeddings` (model `text-embedding-3-small` — rẻ và nhanh)
+- Lưu FAISS index vào thư mục `faiss_index/` để tái sử dụng
+- Có metadata tracking (nguồn tài liệu, chương, loại) để filter khi search
+
+#### [NEW] rag/retriever.py
+Module load FAISS index và thực hiện similarity search:
+- `load_vector_store()` — Load index đã lưu
+- `search_documents(query, k=5)` — Tìm tài liệu liên quan nhất
+
+---
+
+### Component 4: Agent Tools
+
+#### [NEW] tools/search_materials.py — `search_course_materials`
+- **Input**: Câu hỏi của học viên
+- **Logic**: Dùng RAG retriever tìm trong knowledge base (slides, code mẫu, FAQ)
+- **Output**: Trích dẫn tài liệu liên quan kèm source attribution
+
+#### [NEW] tools/code_analyzer.py — `analyze_code_error`
+- **Input**: Đoạn code C/C++ bị lỗi + mô tả lỗi
+- **Logic**: Phân tích syntax/logic error, đề xuất fix. Sử dụng context từ knowledge base
+- **Output**: Giải thích lỗi + gợi ý sửa + giải thích kiến thức liên quan
+
+#### [NEW] tools/course_info.py — `get_course_info`
+- **Input**: Loại thông tin cần tra cứu (lịch học, link tài liệu, TA info,...)
+- **Logic**: Tra cứu file `course_info.json`
+- **Output**: Thông tin khóa học được format đẹp
+
+#### [NEW] tools/escalation.py — `escalate_to_human_ta`
+- **Input**: Tóm tắt vấn đề + lý do cần escalate
+- **Logic**: Tạo escalation report có cấu trúc (mô tả vấn đề, context, mức độ phức tạp)
+- **Output**: Report format và thông báo cho học viên rằng TA người thật sẽ hỗ trợ
+
+---
+
+### Component 5: LangGraph Agent
+
+#### [NEW] agent.py
+Agent chính với kiến trúc LangGraph:
+
+```python
+# Pseudo-code cấu trúc
+from langgraph.prebuilt import create_react_agent
+from langchain_openai import ChatOpenAI
+
+llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.3)
+tools = [search_course_materials, analyze_code_error, get_course_info, escalate_to_human_ta]
+
+SYSTEM_PROMPT = """
+Bạn là AI Trợ Giảng thông minh cho khóa học "Lập trình C/C++ cơ bản"...
+[Chi tiết system prompt bên dưới]
+"""
+
+agent = create_react_agent(llm, tools, prompt=SYSTEM_PROMPT)
+```
+
+**System Prompt chi tiết** sẽ bao gồm:
+1. **Vai trò**: TA AI thân thiện, kiên nhẫn, luôn khuyến khích học viên
+2. **Phân luồng**:
+   - Câu hỏi thủ tục → `get_course_info`
+   - Hỏi về kiến thức/slide → `search_course_materials`
+   - Gửi code bị lỗi → `analyze_code_error`
+   - Vấn đề phức tạp → `escalate_to_human_ta`
+   - Câu hỏi không liên quan → Từ chối lịch sự
+3. **Nguyên tắc sư phạm**: 
+   - Không đưa đáp án trực tiếp, mà gợi ý để học viên tự tìm
+   - Luôn giải thích "tại sao" chứ không chỉ "làm gì"
+   - Trích dẫn tài liệu khóa học khi trả lời
+4. **Giới hạn**: Chỉ trả lời trong phạm vi C/C++ cơ bản, từ chối câu hỏi ngoài scope
+
+---
+
+### Component 6: Streamlit Web UI
+
+#### [NEW] app.py
+Giao diện chat với các tính năng:
+- **Chat interface** với message history (session state)
+- **Streaming response** từ LangGraph Agent
+- **Sidebar**: Thông tin khóa học, quick links, nút reset chat
+- **Code block rendering** đẹp cho C/C++ code
+- **Escalation badge** khi câu hỏi được leo thang
+- **Design**: Dark theme, gradient accents, modern typography
+
+---
+
+## Cấu trúc thư mục hoàn chỉnh
+
+```
+TA_Chatbot/
+├── .env                        # API keys
+├── .gitignore
+├── requirements.txt
+├── app.py                      # Streamlit Web UI (entry point)
+├── agent.py                    # LangGraph Agent definition
+├── config.py                   # Configuration constants
+├── tools/
+│   ├── __init__.py
+│   ├── search_materials.py     # RAG search tool
+│   ├── code_analyzer.py        # Code analysis tool
+│   ├── course_info.py          # Course info lookup
+│   └── escalation.py           # Escalation tool
+├── rag/
+│   ├── __init__.py
+│   ├── indexer.py              # Build FAISS index
+│   └── retriever.py            # Load & query index
+├── knowledge_base/
+│   ├── slides/                 # Tài liệu bài giảng (.md)
+│   │   ├── 01_introduction.md
+│   │   ├── 02_variables_datatypes.md
+│   │   ├── 03_control_flow.md
+│   │   ├── 04_functions.md
+│   │   ├── 05_arrays_strings.md
+│   │   ├── 06_pointers.md
+│   │   ├── 07_structs.md
+│   │   └── 08_file_io.md
+│   ├── code_samples/           # Code mẫu (.c)
+│   │   ├── hello_world.c
+│   │   ├── variables_demo.c
+│   │   ├── loops_demo.c
+│   │   ├── functions_demo.c
+│   │   ├── arrays_demo.c
+│   │   ├── pointers_demo.c
+│   │   ├── structs_demo.c
+│   │   └── file_io_demo.c
+│   ├── faq.md
+│   └── course_info.json
+└── faiss_index/                # Generated FAISS index (gitignored)
+```
+
+---
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Lựa chọn Web UI**: Plan hiện tại dùng **Streamlit** cho nhanh và đẹp. Bạn có muốn dùng framework khác (FastAPI + HTML/JS custom) không?
+
+> [!IMPORTANT]  
+> **Nội dung Knowledge Base**: Tôi sẽ tạo tài liệu mẫu theo syllabus C/C++ cơ bản. Bạn có tài liệu khóa học riêng muốn import vào không? Nếu có, hãy đặt vào thư mục `knowledge_base/`.
+
+> [!IMPORTANT]
+> **Ngôn ngữ giao tiếp**: Agent sẽ trả lời bằng **tiếng Việt**. Bạn có muốn hỗ trợ đa ngôn ngữ không?
+
+---
+
+## Open Questions
+
+1. **Tài liệu khóa học**: Bạn có sẵn slides/tài liệu thực tế không? Hay tôi tạo tài liệu mẫu?
+2. **Escalation channel**: Khi escalate, muốn gửi notification qua kênh nào? (hiện tại sẽ tạo report text, có thể mở rộng thêm email/webhook sau)
+3. **Conversation memory**: Có cần lưu lịch sử hội thoại giữa các session không? (hiện tại dùng session memory trong Streamlit)
+
+---
+
+## Verification Plan
+
+### Automated Tests
+1. Chạy `python rag/indexer.py` — build FAISS index thành công
+2. Test từng tool riêng lẻ với sample inputs
+3. Chạy `streamlit run app.py` — UI hoạt động, chat được
+
+### Manual Verification (Test Scenarios)
+| # | Kịch bản test | Kỳ vọng |
+|---|---|---|
+| 1 | "Cho em xin link slide bài 3" | → Dùng `get_course_info` hoặc `search_course_materials`, trả link |
+| 2 | "Em bị lỗi segmentation fault ở code này: `int *p; *p = 5;`" | → Dùng `analyze_code_error`, giải thích con trỏ chưa cấp phát |
+| 3 | "Giải thích con trỏ cho em" | → Dùng `search_course_materials`, trích dẫn slide về pointers |
+| 4 | "Lịch thi cuối kỳ khi nào?" | → Dùng `get_course_info` |
+| 5 | "Em bị lỗi phức tạp, đã thử nhiều cách..." | → Dùng `escalate_to_human_ta` |
+| 6 | "Cách nấu phở bò?" | → Từ chối lịch sự, không liên quan |
+| 7 | "Vòng lặp for trong C hoạt động như nào?" | → `search_course_materials` + giải thích kèm code mẫu |
+
+### Performance Check
+- Response time < 5 giây cho câu hỏi thông thường
+- RAG retrieval chính xác, trả về đúng tài liệu liên quan

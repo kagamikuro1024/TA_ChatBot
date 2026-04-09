@@ -1,0 +1,430 @@
+"""
+Streamlit Web UI — AI Trợ Giảng cho khóa học Lập trình C/C++ cơ bản.
+
+Chạy: streamlit run app.py
+"""
+
+import streamlit as st
+from agent import stream_chat
+
+# ===== PAGE CONFIG =====
+st.set_page_config(
+    page_title="AI Trợ Giảng — C/C++",
+    page_icon="🎓",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+
+# ===== THEME MANAGEMENT =====
+def get_theme():
+    """Get current theme from session state."""
+    if "dark_mode" not in st.session_state:
+        st.session_state.dark_mode = False
+    return st.session_state.dark_mode
+
+
+def toggle_theme():
+    """Toggle between light and dark mode."""
+    st.session_state.dark_mode = not st.session_state.dark_mode
+
+
+# ===== CUSTOM CSS =====
+def apply_styles():
+    dark = get_theme()
+
+    if dark:
+        # Dark mode
+        bg_primary = "#0f1117"
+        bg_secondary = "#1a1d29"
+        bg_card = "#1e2130"
+        bg_chat_user = "#2d5a8e"
+        bg_chat_ai = "#262b3d"
+        text_primary = "#e6eaf0"
+        text_secondary = "#9ca3b0"
+        border_color = "#2e3347"
+        accent = "#6c8cff"
+        accent_hover = "#8ba5ff"
+        sidebar_bg = "#151821"
+        input_bg = "#1e2130"
+        shadow = "rgba(0,0,0,0.3)"
+    else:
+        # Light mode (default)
+        bg_primary = "#f8f9fc"
+        bg_secondary = "#ffffff"
+        bg_card = "#ffffff"
+        bg_chat_user = "#e8f0fe"
+        bg_chat_ai = "#f0f4f8"
+        text_primary = "#1a1a2e"
+        text_secondary = "#5a5a7a"
+        border_color = "#e2e6ee"
+        accent = "#4a6cf7"
+        accent_hover = "#3b5de7"
+        sidebar_bg = "#f0f2f8"
+        input_bg = "#ffffff"
+        shadow = "rgba(0,0,0,0.06)"
+
+    st.markdown(f"""
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        /* ===== GLOBAL ===== */
+        .stApp {{
+            background-color: {bg_primary};
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }}
+
+        /* ===== HEADER ===== */
+        .main-header {{
+            background: linear-gradient(135deg, {accent}, #7c3aed, #ec4899);
+            padding: 1.5rem 2rem;
+            border-radius: 16px;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 8px 32px {shadow};
+        }}
+        .main-header h1 {{
+            color: white;
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin: 0;
+            letter-spacing: -0.02em;
+        }}
+        .main-header p {{
+            color: rgba(255,255,255,0.85);
+            font-size: 0.9rem;
+            margin: 0.25rem 0 0;
+        }}
+
+        /* ===== SIDEBAR ===== */
+        section[data-testid="stSidebar"] {{
+            background-color: {sidebar_bg};
+            border-right: 1px solid {border_color};
+        }}
+        section[data-testid="stSidebar"] .stMarkdown {{
+            color: {text_primary};
+        }}
+
+        /* ===== CHAT MESSAGES ===== */
+        .stChatMessage {{
+            border-radius: 12px;
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.5rem;
+            border: 1px solid {border_color};
+            box-shadow: 0 1px 3px {shadow};
+        }}
+        div[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]) {{
+            background-color: {bg_chat_user} !important;
+        }}
+        div[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-assistant"]) {{
+            background-color: {bg_chat_ai} !important;
+        }}
+
+        /* ===== CHAT INPUT ===== */
+        .stChatInput {{
+            border-color: {border_color};
+        }}
+        .stChatInput > div {{
+            background-color: {input_bg};
+            border: 2px solid {border_color};
+            border-radius: 12px;
+            transition: border-color 0.2s;
+        }}
+        .stChatInput > div:focus-within {{
+            border-color: {accent};
+            box-shadow: 0 0 0 3px {accent}33;
+        }}
+
+        /* ===== CARDS ===== */
+        .info-card {{
+            background: {bg_card};
+            border: 1px solid {border_color};
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 0.75rem;
+            box-shadow: 0 2px 8px {shadow};
+            transition: transform 0.2s, box-shadow 0.2s;
+        }}
+        .info-card:hover {{
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px {shadow};
+        }}
+        .info-card h4 {{
+            color: {accent};
+            margin: 0 0 0.5rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }}
+        .info-card p {{
+            color: {text_secondary};
+            margin: 0;
+            font-size: 0.82rem;
+            line-height: 1.5;
+        }}
+
+        /* ===== STATUS BADGE ===== */
+        .status-badge {{
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            padding: 0.3rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }}
+        .status-dot {{
+            width: 8px;
+            height: 8px;
+            background: #6ee7b7;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }}
+        @keyframes pulse {{
+            0%, 100% {{ opacity: 1; }}
+            50% {{ opacity: 0.4; }}
+        }}
+
+        /* ===== QUICK ACTION BUTTONS ===== */
+        .quick-action {{
+            background: {bg_card};
+            border: 1px solid {border_color};
+            border-radius: 10px;
+            padding: 0.6rem 0.8rem;
+            margin: 0.25rem 0;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.8rem;
+            color: {text_primary};
+            display: block;
+            width: 100%;
+            text-align: left;
+        }}
+        .quick-action:hover {{
+            border-color: {accent};
+            background: {accent}0d;
+            transform: translateX(4px);
+        }}
+
+        /* ===== THEME TOGGLE ===== */
+        .theme-toggle {{
+            background: {bg_card};
+            border: 1px solid {border_color};
+            border-radius: 10px;
+            padding: 0.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }}
+
+        /* ===== TEXT COLORS ===== */
+        .stMarkdown, .stMarkdown p, .stMarkdown li {{
+            color: {text_primary};
+        }}
+        h1, h2, h3, h4, h5 {{
+            color: {text_primary} !important;
+        }}
+
+        /* ===== SCROLLBAR ===== */
+        ::-webkit-scrollbar {{
+            width: 6px;
+        }}
+        ::-webkit-scrollbar-track {{
+            background: transparent;
+        }}
+        ::-webkit-scrollbar-thumb {{
+            background: {border_color};
+            border-radius: 3px;
+        }}
+
+        /* ===== MISC ===== */
+        .block-container {{
+            padding-top: 1.5rem;
+            padding-bottom: 1rem;
+        }}
+        .stSpinner > div {{
+            border-top-color: {accent} !important;
+        }}
+    </style>
+    """, unsafe_allow_html=True)
+
+
+# ===== SIDEBAR =====
+def render_sidebar():
+    with st.sidebar:
+        # Theme toggle
+        dark = get_theme()
+        theme_icon = "🌙" if not dark else "☀️"
+        theme_label = "Chế độ tối" if not dark else "Chế độ sáng"
+        if st.button(f"{theme_icon} {theme_label}", use_container_width=True, key="theme_toggle"):
+            toggle_theme()
+            st.rerun()
+
+        st.markdown("---")
+
+        # Status
+        st.markdown("""
+        <div class="status-badge">
+            <div class="status-dot"></div>
+            Online — Sẵn sàng hỗ trợ
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Course info card
+        st.markdown("""
+        <div class="info-card">
+            <h4>📚 Khóa học</h4>
+            <p><strong>Lập trình C/C++ cơ bản</strong><br>
+            Mã: CS101 | HK2 2025-2026<br>
+            GV: ThS. Nguyễn Văn Minh</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Schedule card
+        st.markdown("""
+        <div class="info-card">
+            <h4>📅 Lịch học</h4>
+            <p>🏫 Lý thuyết: Thứ 3, 8:00-10:00<br>
+            💻 Thực hành: Thứ 5, 13:00-16:00</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # TA info card
+        st.markdown("""
+        <div class="info-card">
+            <h4>👩‍💼 Trợ giảng</h4>
+            <p>Trần Thị Hoa (TA chính)<br>
+            <em>T2-T6: 18:00-21:00</em><br>
+            Lê Minh Tuấn (TA phụ)<br>
+            <em>T7: 9:00-12:00</em></p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("---")
+
+        # Quick actions
+        st.markdown("#### 💡 Câu hỏi mẫu")
+
+        quick_questions = [
+            "🔧 Cách cài đặt gcc trên Windows?",
+            "📝 Con trỏ trong C là gì?",
+            "🐛 Segmentation fault là lỗi gì?",
+            "📅 Lịch thi cuối kỳ khi nào?",
+            "💻 Cho em xem code mẫu vòng lặp for",
+        ]
+
+        for q in quick_questions:
+            if st.button(q, use_container_width=True, key=f"quick_{q}"):
+                st.session_state.pending_question = q
+                st.rerun()
+
+        st.markdown("---")
+
+        # Reset chat
+        if st.button("🗑️ Xóa cuộc trò chuyện", use_container_width=True, type="secondary"):
+            st.session_state.messages = []
+            if "pending_question" in st.session_state:
+                del st.session_state.pending_question
+            st.rerun()
+
+        # Footer
+        st.markdown("""
+        <div style="text-align: center; margin-top: 1rem; opacity: 0.5; font-size: 0.7rem;">
+            Powered by GPT-4o-mini + LangGraph<br>
+            © 2026 AI Teaching Assistant
+        </div>
+        """, unsafe_allow_html=True)
+
+
+# ===== MAIN CHAT =====
+def render_main():
+    # Header
+    st.markdown("""
+    <div class="main-header">
+        <h1>🎓 AI Trợ Giảng — Lập trình C/C++</h1>
+        <p>Trợ giảng AI thông minh hỗ trợ bạn 24/7 • Hỏi bất cứ điều gì về C/C++ cơ bản</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Initialize chat history
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+
+    # Display welcome message if no history
+    if not st.session_state.messages:
+        with st.chat_message("assistant", avatar="🎓"):
+            st.markdown("""
+**Xin chào! 👋 Mình là AI Trợ Giảng** cho khóa học *Lập trình C/C++ cơ bản*.
+
+Mình có thể giúp bạn:
+- 📖 **Giải thích kiến thức**: Biến, mảng, con trỏ, hàm, struct,...
+- 🐛 **Debug code**: Gửi code lỗi cho mình phân tích
+- 📋 **Thông tin khóa học**: Lịch học, điểm số, tài liệu
+- 💡 **Gợi ý bài tập**: Hướng dẫn approach, không spoil đáp án
+
+*Hãy gõ câu hỏi bên dưới hoặc chọn câu hỏi mẫu ở sidebar!* ✨
+            """)
+
+    # Display chat history
+    for msg in st.session_state.messages:
+        avatar = "👤" if msg["role"] == "user" else "🎓"
+        with st.chat_message(msg["role"], avatar=avatar):
+            st.markdown(msg["content"])
+
+    # Handle pending quick question
+    pending = st.session_state.get("pending_question")
+    if pending:
+        del st.session_state.pending_question
+        process_message(pending)
+
+    # Chat input
+    if prompt := st.chat_input("Hỏi mình bất cứ gì về C/C++..."):
+        process_message(prompt)
+
+
+def process_message(prompt: str):
+    """Process a user message and get AI response."""
+    # Display user message
+    with st.chat_message("user", avatar="👤"):
+        st.markdown(prompt)
+    st.session_state.messages.append({"role": "user", "content": prompt})
+
+    # Build history for agent
+    history = []
+    for msg in st.session_state.messages[:-1]:  # Exclude current message
+        history.append({"role": msg["role"], "content": msg["content"]})
+
+    # Stream AI response
+    with st.chat_message("assistant", avatar="🎓"):
+        with st.spinner("🤔 Đang suy nghĩ..."):
+            try:
+                response_chunks = []
+                response_placeholder = st.empty()
+
+                for chunk in stream_chat(prompt, history):
+                    response_chunks.append(chunk)
+                    full_response = "".join(response_chunks)
+                    response_placeholder.markdown(full_response + "▌")
+
+                full_response = "".join(response_chunks)
+                response_placeholder.markdown(full_response)
+
+                if not full_response.strip():
+                    full_response = "Xin lỗi, mình gặp sự cố khi xử lý câu hỏi. Bạn thử hỏi lại nhé! 🙏"
+                    response_placeholder.markdown(full_response)
+
+            except Exception as e:
+                full_response = f"⚠️ Đã xảy ra lỗi: {str(e)}\n\nBạn vui lòng thử lại nhé!"
+                st.error(full_response)
+
+    st.session_state.messages.append({"role": "assistant", "content": full_response})
+
+
+# ===== MAIN =====
+if __name__ == "__main__":
+    apply_styles()
+    render_sidebar()
+    render_main()
