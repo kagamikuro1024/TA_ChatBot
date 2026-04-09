@@ -57,7 +57,7 @@
     ],
     "grading": {
         "components": {
-            "attendance": {"weight": 10, "description": "Điểm danh, tham gia lớp"},
+            "attendance": {"weight": 10, "description": "Điểm danh, tham gia lớp. Vắng 1 buổi trừ 3 điểm vào cột này. Vắng quá 3 buổi không phép = cấm thi."},
             "weekly_assignments": {"weight": 20, "description": "Bài tập hàng tuần (độ khó thấp, kiến thức cơ bản)"},
             "labs": {"weight": 20, "description": "Bài tập thực hành trong giờ lab (độ khó trung bình)"},
             "projects": {"weight": 20, "description": "Dự án lập trình (độ khó cao, áp dụng kiến thức)"},
@@ -154,7 +154,7 @@
     "policies": {
         "late_submission": "Trừ 10% mỗi ngày trễ, tối đa 3 ngày",
         "plagiarism": "Bài tập phải tự làm. Phát hiện sao chép sẽ nhận 0 điểm cho cả 2 bên.",
-        "absence": "Vắng quá 3 buổi không phép sẽ bị cấm thi cuối kỳ.",
+        "absence": "Vắng 1 buổi trừ 3 điểm chuyên cần. Vắng quá 3 buổi không phép sẽ bị cấm thi cuối kỳ.",
         "communication": "Sử dụng group chat Zalo/Telegram của lớp để hỏi đáp. Câu hỏi cá nhân gửi email cho TA."
     },
     "important_dates": {

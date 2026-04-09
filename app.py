@@ -5,7 +5,13 @@ Chạy: streamlit run app.py
 """
 
 import streamlit as st
+import uuid
 from agent import stream_chat
+from utils.storage import (
+    get_metrics, update_metric, save_chat_session, 
+    load_chat_session, list_past_chats
+)
+from utils.email_service import send_escalation_email
 
 # ===== PAGE CONFIG =====
 st.set_page_config(
@@ -265,6 +271,26 @@ def render_sidebar():
 
         st.markdown("---")
 
+        # Dashboard / Metrics
+        bg_card = "#1e2130" if dark else "#ffffff"
+        border_color = "#2e3347" if dark else "#e2e6ee"
+        accent = "#6c8cff" if dark else "#4a6cf7"
+        text_primary = "#e6eaf0" if dark else "#1a1a2e"
+        text_secondary = "#9ca3b0" if dark else "#5a5a7a"
+
+        metrics = get_metrics()
+        st.markdown(f"""
+        <div style="background: {bg_card}; padding: 12px; border-radius: 10px; margin-bottom: 1rem; border: 1px solid {border_color};">
+            <div style="color: {accent}; font-weight: 600; font-size: 0.85rem; margin-bottom: 8px;">📊 THỐNG KÊ AI</div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: {text_primary};">
+                <div>👍: <b>{metrics['helpful']}</b></div>
+                <div>👎: <b>{metrics['unhelpful']}</b></div>
+                <div>⚠️: <b>{metrics['escalated']}</b></div>
+            </div>
+            <div style="font-size: 0.75rem; color: {text_secondary}; margin-top: 5px; text-align: center;">Tổng câu hỏi: {metrics['total']}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
         # Status
         st.markdown("""
         <div class="status-badge">
@@ -324,11 +350,28 @@ def render_sidebar():
         st.markdown("---")
 
         # Reset chat
-        if st.button("🗑️ Xóa cuộc trò chuyện", use_container_width=True, type="secondary"):
+        if st.button("➕ Đoạn chat mới", use_container_width=True, type="primary"):
+            st.session_state.session_id = uuid.uuid4().hex
             st.session_state.messages = []
+            st.session_state.attempt_count = 1
+            st.session_state.rated_messages = set()
             if "pending_question" in st.session_state:
                 del st.session_state.pending_question
             st.rerun()
+            
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("#### 🕒 Lịch sử Chat")
+        past_chats = list_past_chats()
+        if not past_chats:
+            st.markdown("<div style='font-size:0.8rem; color:gray'>Chưa có lịch sử</div>", unsafe_allow_html=True)
+        else:
+            for chat in past_chats[:5]: # Hiển thị 5 chat gần nhất
+                if st.button(f"💬 {chat['title']}", key=f"hist_{chat['session_id']}", use_container_width=True):
+                    st.session_state.session_id = chat['session_id']
+                    st.session_state.messages = load_chat_session(chat['session_id'])
+                    st.session_state.attempt_count = sum(1 for m in st.session_state.messages if m["role"] == "user") + 1
+                    st.session_state.rated_messages = set(range(len(st.session_state.messages))) # Giả định các câu cũ không rate lại
+                    st.rerun()
 
         # Footer
         st.markdown("""
@@ -349,9 +392,15 @@ def render_main():
     </div>
     """, unsafe_allow_html=True)
 
-    # Initialize chat history
+    # Initialize state variables
+    if "session_id" not in st.session_state:
+        st.session_state.session_id = uuid.uuid4().hex
+    if "attempt_count" not in st.session_state:
+        st.session_state.attempt_count = 1
     if "messages" not in st.session_state:
         st.session_state.messages = []
+    if "rated_messages" not in st.session_state:
+        st.session_state.rated_messages = set()
 
     # Display welcome message if no history
     if not st.session_state.messages:
@@ -369,10 +418,59 @@ Mình có thể giúp bạn:
             """)
 
     # Display chat history
-    for msg in st.session_state.messages:
+    for i, msg in enumerate(st.session_state.messages):
         avatar = "👤" if msg["role"] == "user" else "🎓"
         with st.chat_message(msg["role"], avatar=avatar):
             st.markdown(msg["content"])
+            
+            # Feedback widget cho lời giải của AI
+            if msg["role"] == "assistant":
+                is_rated = i in st.session_state.rated_messages
+                feedback = st.feedback("thumbs", key=f"fb_{st.session_state.session_id}_{i}", disabled=is_rated)
+                if feedback is not None and not is_rated:
+                    st.session_state.rated_messages.add(i)
+                    if feedback == 1:
+                        update_metric("helpful", 1)
+                        st.toast("Cảm ơn bạn đã đánh giá hữu ích! 👍")
+                    elif feedback == 0:
+                        update_metric("unhelpful", 1)
+                        st.toast("Cảm ơn góp ý của bạn để AI tốt hơn! 👎")
+                    # Lưu lại state messages
+                    st.rerun()
+
+    # Handle pending escalation response
+    if "pending_escalation_report" in st.session_state:
+        with st.chat_message("assistant", avatar="🎓"):
+            st.markdown("⚠️ **Xác nhận yêu cầu hỗ trợ từ Giảng viên/Trợ giảng**")
+            with st.expander("Xem chi tiết phiếu hỗ trợ sẽ gửi", expanded=True):
+                st.code(st.session_state.pending_escalation_report)
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("✅ Xác nhận Gửi TA", use_container_width=True, type="primary"):
+                    with st.spinner("Đang gửi email cho TA..."):
+                        success = send_escalation_email(st.session_state.pending_escalation_report)
+                    
+                    st.session_state.messages.append({"role": "user", "content": "Xác nhận gửi phiếu escalate."})
+                    if success:
+                        st.session_state.messages.append({"role": "assistant", "content": "✅ Đã gửi email thành công cho giảng viên/TA. Họ sẽ hỗ trợ bạn trong thời gian sớm nhất nhé! ⏳"})
+                    else:
+                        st.session_state.messages.append({"role": "assistant", "content": "❌ Lỗi: Không thể gửi email cho giảng viên. Bạn vui lòng thử liên hệ trực tiếp qua email ở trên nhé!"})
+                    
+                    update_metric("escalated", 1)
+                    del st.session_state.pending_escalation_report
+                    save_chat_session(st.session_state.session_id, st.session_state.messages)
+                    st.rerun()
+            with col2:
+                if st.button("❌ Hủy bỏ", use_container_width=True):
+                    st.session_state.messages.append({"role": "user", "content": "Hủy gửi phiếu escalate."})
+                    st.session_state.messages.append({"role": "assistant", "content": "Đã hủy yêu cầu gọi TA. Bạn cần mình hỗ trợ gì thêm không? 😊"})
+                    del st.session_state.pending_escalation_report
+                    save_chat_session(st.session_state.session_id, st.session_state.messages)
+                    st.rerun()
+        
+        # Stop rendering chat input while waiting for confirmation
+        return
 
     # Handle pending quick question
     pending = st.session_state.get("pending_question")
@@ -391,11 +489,16 @@ def process_message(prompt: str):
     with st.chat_message("user", avatar="👤"):
         st.markdown(prompt)
     st.session_state.messages.append({"role": "user", "content": prompt})
+    
+    # Update total questions count metric
+    update_metric("total", 1)
 
     # Build history for agent
     history = []
     for msg in st.session_state.messages[:-1]:  # Exclude current message
         history.append({"role": msg["role"], "content": msg["content"]})
+        
+    hidden_prompt = f"Lượt hỏi thứ {st.session_state.attempt_count} | Nội dung: {prompt}"
 
     # Stream AI response
     with st.chat_message("assistant", avatar="🎓"):
@@ -404,7 +507,7 @@ def process_message(prompt: str):
                 response_chunks = []
                 response_placeholder = st.empty()
 
-                for chunk in stream_chat(prompt, history):
+                for chunk in stream_chat(hidden_prompt, history):
                     response_chunks.append(chunk)
                     full_response = "".join(response_chunks)
                     response_placeholder.markdown(full_response + "▌")
@@ -421,6 +524,25 @@ def process_message(prompt: str):
                 st.error(full_response)
 
     st.session_state.messages.append({"role": "assistant", "content": full_response})
+    
+    # Cập nhật số lần thử debug/giải thích liên tục
+    st.session_state.attempt_count += 1
+    
+    # Check if an escalation was triggered
+    if "--- ESCALATION REPORT ---" in full_response:
+        parts = full_response.split("--- ESCALATION REPORT ---")
+        ai_text = "⚠️ Mình đã chuẩn bị Phiếu yêu cầu hỗ trợ (Escalation Report). Bạn vui lòng kiểm tra thông tin bên dưới và bấm **Xác nhận** để gửi cho TA nhé!"
+        report_text = parts[1].strip() if len(parts) > 1 else ""
+        
+        # Swap out the last message to hide the report string and prevent LLM hallucination
+        st.session_state.messages[-1]["content"] = ai_text
+        st.session_state.pending_escalation_report = report_text
+    elif "chuyển câu hỏi cho TA" in full_response or "gọi cho giảng viên" in full_response:
+        update_metric("escalated", 1)
+        
+    # Lưu phiên bản mới nhất của đoạn chat
+    save_chat_session(st.session_state.session_id, st.session_state.messages)
+    st.rerun()
 
 
 # ===== MAIN =====

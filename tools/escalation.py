@@ -36,6 +36,8 @@ def escalate_to_human_ta(
     """
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+    tag_level = "🚨 HIGH" if "policy" in reason.lower() or "trực tiếp" in reason.lower() else "⚠️ MEDIUM"
+    
     report = f"""
 ╔══════════════════════════════════════════════════════╗
 ║         🚨 ESCALATION REPORT — CẦN TA HỖ TRỢ        ║
@@ -44,17 +46,14 @@ def escalate_to_human_ta(
 ║ Mức độ: ⚠️ Cần TA người thật
 ╠══════════════════════════════════════════════════════╣
 
-📝 TÓM TẮT:
-{summary}
+📝 TÓM TẮT DÀNH CHO TA:
+[Mức độ: {tag_level}] - [{summary}] - [{attempted_solutions if attempted_solutions else "Chưa thử hỗ trợ cụ thể"}]
 
 ❓ CÂU HỎI GỐC CỦA HỌC VIÊN:
 {student_question}
 
 🔍 LÝ DO ESCALATE:
 {reason}
-
-🔧 AI ĐÃ THỬ:
-{attempted_solutions if attempted_solutions else "Chưa thử hỗ trợ cụ thể."}
 
 ╠══════════════════════════════════════════════════════╣
 ║ 📧 TA chính: Trần Thị Hoa — hoa.tt@university.edu.vn
@@ -64,14 +63,7 @@ def escalate_to_human_ta(
 """
 
     response = (
-        f"📋 Đã tạo Escalation Report.\n\n"
-        f"Thông báo cho học viên:\n"
-        f"Câu hỏi của bạn đã được ghi nhận và chuyển tới TA người thật. "
-        f"TA sẽ phản hồi trong vòng vài giờ tới (thường trong giờ trực). "
-        f"Trong khi chờ, bạn có thể:\n"
-        f"  1. Thử các cách khác mà mình đã gợi ý\n"
-        f"  2. Đọc thêm tài liệu liên quan\n"
-        f"  3. Hỏi thêm câu hỏi khác cho mình\n\n"
+        f"Mình đã chuẩn bị Phiếu yêu cầu hỗ trợ (Escalation Report) bên dưới. Bạn vui lòng kiểm tra và bấm xác nhận để gửi cho TA nhé!\n\n"
         f"--- ESCALATION REPORT ---\n{report}"
     )
 

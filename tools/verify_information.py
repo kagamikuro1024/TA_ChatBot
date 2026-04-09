@@ -42,7 +42,30 @@ def verify_information_exists(
         # Tra cứu trong Knowledge Base
         results = search_documents(query, k=3)
         
-        if not results:
+        # Thêm kiểm tra course_info.json vì FAISS không index file này
+        from tools.course_info import _load_course_info
+        import json
+        import re
+        
+        course_info_match = False
+        try:
+            course_info = _load_course_info()
+            course_info_text = json.dumps(course_info, ensure_ascii=False).lower()
+            
+            # Simple keyword matching
+            query_words = re.findall(r'\w+', query.lower())
+            stopwords = {"tôi", "đã", "môn", "này", "buổi", "rồi", "xem", "giúp", "bị", "bao", "nhiêu", "và", "có", "gì", "không", "cho", "hỏi"}
+            keywords = [w for w in query_words if w not in stopwords and len(w) > 2]
+            if not keywords:
+                keywords = query_words
+                
+            match_count = sum(1 for k in keywords if k in course_info_text)
+            if match_count >= max(1, len(keywords) // 2) and keywords:
+                course_info_match = True
+        except Exception:
+            pass
+
+        if not results and not course_info_match:
             return {
                 "found": False,
                 "confidence": 0.0,
@@ -50,8 +73,17 @@ def verify_information_exists(
                 "data": None,
                 "recommendation": "Không tìm thấy thông tin trong KB. Nên escalate cho TA."
             }
+            
+        if course_info_match:
+            return {
+                "found": True,
+                "confidence": 0.8,
+                "source": "course_info.json",
+                "data": "Thông tin có thể nằm trong thiết lập chung khóa học. Hãy sử dụng tool `get_course_info` với `info_type` phù hợp (policies, grading, v.v...) để lấy chi tiết.",
+                "recommendation": "Nên dùng tool get_course_info để lấy thông tin chính xác thay vì escalate."
+            }
         
-        # Có kết quả tìm được
+        # Có kết quả tìm được từ FAISS
         top_result = results[0]
         confidence = 0.7  # Placeholder, trong thực tế sẽ dùng similarity score
         

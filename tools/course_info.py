@@ -86,7 +86,7 @@ def get_course_info(info_type: str) -> str:
             )
         return result.strip()
 
-    elif info_type in ("grading", "điểm", "diem", "cách tính điểm"):
+    elif info_type in ("grading", "điểm", "diem", "cách tính điểm", "trừ điểm"):
         info_full = _load_course_info()
         
         # Try new format first (components + assessment_types)
@@ -163,7 +163,7 @@ def get_course_info(info_type: str) -> str:
         result += f"\n🖥️ LMS: {res['lms']}"
         return result
 
-    elif info_type in ("policies", "quy chế", "quy che", "nội quy"):
+    elif info_type in ("policies", "quy chế", "quy che", "nội quy", "vắng", "vắng mặt", "absence"):
         pol = info["policies"]
         return (
             f"📋 QUY CHẾ KHÓA HỌC\n\n"

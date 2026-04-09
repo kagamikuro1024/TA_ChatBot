@@ -15,6 +15,9 @@ build/
 # FAISS index (generated)
 faiss_index/
 
+#app_data
+app_data/
+
 # IDE
 .vscode/
 .idea/

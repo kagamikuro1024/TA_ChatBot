@@ -46,6 +46,7 @@ def detect_escalation_trigger(
         r"(cần|muốn).{0,5}(nói|chuyện|hỏi).{0,5}(ta|trợ giảng)",
         r"(xin|tìm).{0,5}(sự giúp đỡ|trợ giúp).{0,5}(của.{0,5})?(ta|trợ giảng)",
         r"^(mê|ay|help|sos)[\s,]",  # SOS signals
+        r"(policy|quy chế|xin phép|điểm thi|phúc khảo|khiếu nại|ngoại lệ)", # Force escalate policy issues
     ]
     
     for pattern in direct_request_keywords:
@@ -58,25 +59,23 @@ def detect_escalation_trigger(
                 "action": "🚀 Kích hoạt Route TA ngay lập tức. Không thải lại toàn bộ câu hỏi."
             }
     
-    # === TRIGGER 2: DISPUTE (Phản bác - thực hiện sau lần trả lời thứ 2) ===
-    # Chỉ áp dụng nếu attempt_count >= 2 (đã thử ít nhất 2 lần)
-    if attempt_count >= 2:
-        dispute_keywords = [
-            r"(sai|không đúng|bạn trả lời sai|bot bị lỗi)",
-            r"(không phải vậy|không phải cái|ý mình khác)",
-            r"(bạn không hiểu|hiểu sai ý mình)",
-            r"(mình không hiểu|chưa rõ|vẫn không biết)",
-        ]
-        
-        for pattern in dispute_keywords:
-            if re.search(pattern, message_lower, re.IGNORECASE):
-                return {
-                    "should_escalate": True,
-                    "trigger_type": "dispute",
-                    "confidence": 0.80,
-                    "reason": f"Sinh viên phản bác sau {attempt_count} lần trả lời",
-                    "action": "🚨 Escalate: Sinh viên không hài lòng với câu trả lời. Cần TA kiểm tra."
-                }
+    # === TRIGGER 2: DISPUTE (Phản bác) ===
+    dispute_keywords = [
+        r"(sai|không đúng|bạn trả lời sai|bot bị lỗi)",
+        r"(không phải vậy|không phải cái|ý mình khác)",
+        r"(bạn không hiểu|hiểu sai ý mình)",
+        r"(mình không hiểu|chưa rõ|vẫn không biết)",
+    ]
+    
+    for pattern in dispute_keywords:
+        if re.search(pattern, message_lower, re.IGNORECASE):
+            return {
+                "should_escalate": False, # KHÔNG gọi escalate ngay, yêu cầu AI hỏi trước
+                "trigger_type": "dispute",
+                "confidence": 0.80,
+                "reason": "Sinh viên phản bác lại câu trả lời",
+                "action": "🚨 KHOAN Escalate: Sinh viên không hài lòng. HÃY HỎI sinh viên: 'Bạn có muốn chuyển câu hỏi này cho TA/Giảng viên để kiểm tra chính xác không?'"
+            }
     
     # === No Trigger ===
     return {
