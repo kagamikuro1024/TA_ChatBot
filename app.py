@@ -40,65 +40,70 @@ def apply_styles():
     dark = get_theme()
 
     if dark:
-        # Dark mode
-        bg_primary = "#0f1117"
-        bg_secondary = "#1a1d29"
-        bg_card = "#1e2130"
-        bg_chat_user = "#2d5a8e"
-        bg_chat_ai = "#262b3d"
-        text_primary = "#e6eaf0"
-        text_secondary = "#9ca3b0"
-        border_color = "#2e3347"
-        accent = "#6c8cff"
-        accent_hover = "#8ba5ff"
-        sidebar_bg = "#151821"
-        input_bg = "#1e2130"
+        # Dark mode (Claude style)
+        bg_primary = "#18181a"
+        bg_secondary = "#202022"
+        bg_card = "#202022"
+        bg_chat_user = "#2a2a2c"
+        bg_chat_ai = "transparent"
+        text_primary = "#ecece9"
+        text_secondary = "#a09d94"
+        border_color = "#36342e"
+        accent = "#d97757"
+        accent_hover = "#c06b4e"
+        sidebar_bg = "#19191a"
+        input_bg = "#202022"
         shadow = "rgba(0,0,0,0.3)"
     else:
-        # Light mode (default)
-        bg_primary = "#f8f9fc"
-        bg_secondary = "#ffffff"
+        # Light mode (Claude style)
+        bg_primary = "#fdfcfb"
+        bg_secondary = "#f3f2ee"
         bg_card = "#ffffff"
-        bg_chat_user = "#e8f0fe"
-        bg_chat_ai = "#f0f4f8"
-        text_primary = "#1a1a2e"
-        text_secondary = "#5a5a7a"
-        border_color = "#e2e6ee"
-        accent = "#4a6cf7"
-        accent_hover = "#3b5de7"
-        sidebar_bg = "#f0f2f8"
+        bg_chat_user = "#f0efe9"
+        bg_chat_ai = "transparent"
+        text_primary = "#1a1918"
+        text_secondary = "#666460"
+        border_color = "#e2e0da"
+        accent = "#d97757"
+        accent_hover = "#c06b4e"
+        sidebar_bg = "#f9f8f6"
         input_bg = "#ffffff"
-        shadow = "rgba(0,0,0,0.06)"
+        shadow = "rgba(0,0,0,0.04)"
 
     st.markdown(f"""
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap');
 
         /* ===== GLOBAL ===== */
         .stApp {{
             background-color: {bg_primary};
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: {text_primary};
         }}
 
         /* ===== HEADER ===== */
         .main-header {{
-            background: linear-gradient(135deg, {accent}, #7c3aed, #ec4899);
+            background: {bg_card};
+            border: 1px solid {border_color};
             padding: 1.5rem 2rem;
-            border-radius: 16px;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 8px 32px {shadow};
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 20px {shadow};
+            text-align: center;
         }}
         .main-header h1 {{
-            color: white;
-            font-size: 1.75rem;
-            font-weight: 700;
+            color: {text_primary};
+            font-size: 1.8rem;
+            font-family: 'Newsreader', 'Georgia', serif;
+            font-weight: 600;
             margin: 0;
-            letter-spacing: -0.02em;
+            letter-spacing: -0.01em;
         }}
         .main-header p {{
-            color: rgba(255,255,255,0.85);
-            font-size: 0.9rem;
-            margin: 0.25rem 0 0;
+            color: {text_secondary};
+            font-size: 0.95rem;
+            margin: 0.5rem 0 0;
+            font-weight: 400;
         }}
 
         /* ===== SIDEBAR ===== */
@@ -109,64 +114,100 @@ def apply_styles():
         section[data-testid="stSidebar"] .stMarkdown {{
             color: {text_primary};
         }}
+        section[data-testid="stSidebar"] h4 {{
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: {text_secondary};
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+        }}
 
         /* ===== CHAT MESSAGES ===== */
         .stChatMessage {{
             border-radius: 12px;
             padding: 0.75rem 1rem;
             margin-bottom: 0.5rem;
-            border: 1px solid {border_color};
-            box-shadow: 0 1px 3px {shadow};
+            border: 1px solid transparent;
         }}
         div[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]) {{
             background-color: {bg_chat_user} !important;
+            border: 1px solid {border_color};
         }}
         div[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-assistant"]) {{
             background-color: {bg_chat_ai} !important;
         }}
 
+        /* ===== BUTTONS ===== */
+        .stButton > button {{
+            border-radius: 8px !important;
+            border: 1px solid {border_color} !important;
+            background-color: {bg_card} !important;
+            color: {text_primary} !important;
+            transition: all 0.2s ease !important;
+            font-weight: 500 !important;
+        }}
+        .stButton > button:hover {{
+            border-color: {accent} !important;
+            color: {accent} !important;
+            box-shadow: 0 2px 8px {shadow} !important;
+        }}
+        .stButton > button[data-testid="baseButton-primary"] {{
+            background-color: {accent} !important;
+            color: #ffffff !important;
+            border: none !important;
+        }}
+        .stButton > button[data-testid="baseButton-primary"]:hover {{
+            background-color: {accent_hover} !important;
+            color: #ffffff !important;
+        }}
+
         /* ===== CHAT INPUT ===== */
         .stChatInput {{
             border-color: {border_color};
+            padding-bottom: 2rem;
         }}
         .stChatInput > div {{
             background-color: {input_bg};
-            border: 2px solid {border_color};
+            border: 1px solid {border_color};
             border-radius: 12px;
-            transition: border-color 0.2s;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            box-shadow: 0 2px 10px {shadow};
         }}
         .stChatInput > div:focus-within {{
             border-color: {accent};
-            box-shadow: 0 0 0 3px {accent}33;
+            box-shadow: 0 0 0 2px {accent}33;
         }}
 
         /* ===== CARDS ===== */
         .info-card {{
             background: {bg_card};
             border: 1px solid {border_color};
-            border-radius: 12px;
+            border-radius: 10px;
             padding: 1rem 1.25rem;
             margin-bottom: 0.75rem;
             box-shadow: 0 2px 8px {shadow};
-            transition: transform 0.2s, box-shadow 0.2s;
+            transition: transform 0.2s;
         }}
         .info-card:hover {{
             transform: translateY(-1px);
-            box-shadow: 0 4px 16px {shadow};
         }}
         .info-card h4 {{
-            color: {accent};
+            color: {text_primary};
             margin: 0 0 0.5rem;
             font-size: 0.85rem;
             font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
+            text-transform: none !important;
+            letter-spacing: normal !important;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }}
         .info-card p {{
             color: {text_secondary};
             margin: 0;
             font-size: 0.82rem;
-            line-height: 1.5;
+            line-height: 1.6;
         }}
 
         /* ===== STATUS BADGE ===== */
@@ -174,31 +215,28 @@ def apply_styles():
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: white;
-            padding: 0.3rem 0.75rem;
+            background: {bg_card};
+            border: 1px solid {border_color};
+            color: {text_secondary};
+            padding: 0.25rem 0.6rem;
             border-radius: 20px;
             font-size: 0.75rem;
-            font-weight: 600;
+            font-weight: 500;
             margin-bottom: 1rem;
         }}
         .status-dot {{
-            width: 8px;
-            height: 8px;
-            background: #6ee7b7;
+            width: 6px;
+            height: 6px;
+            background: #10b981;
             border-radius: 50%;
-            animation: pulse 2s infinite;
-        }}
-        @keyframes pulse {{
-            0%, 100% {{ opacity: 1; }}
-            50% {{ opacity: 0.4; }}
+            box-shadow: 0 0 8px #10b981;
         }}
 
         /* ===== QUICK ACTION BUTTONS ===== */
         .quick-action {{
             background: {bg_card};
             border: 1px solid {border_color};
-            border-radius: 10px;
+            border-radius: 8px;
             padding: 0.6rem 0.8rem;
             margin: 0.25rem 0;
             cursor: pointer;
@@ -211,15 +249,14 @@ def apply_styles():
         }}
         .quick-action:hover {{
             border-color: {accent};
-            background: {accent}0d;
-            transform: translateX(4px);
+            color: {accent};
         }}
 
         /* ===== THEME TOGGLE ===== */
         .theme-toggle {{
             background: {bg_card};
             border: 1px solid {border_color};
-            border-radius: 10px;
+            border-radius: 8px;
             padding: 0.5rem;
             text-align: center;
             cursor: pointer;
@@ -272,30 +309,44 @@ def render_sidebar():
         st.markdown("---")
 
         # Dashboard / Metrics
-        bg_card = "#1e2130" if dark else "#ffffff"
-        border_color = "#2e3347" if dark else "#e2e6ee"
-        accent = "#6c8cff" if dark else "#4a6cf7"
-        text_primary = "#e6eaf0" if dark else "#1a1a2e"
-        text_secondary = "#9ca3b0" if dark else "#5a5a7a"
+        bg_card = "#202022" if dark else "#ffffff"
+        border_color = "#36342e" if dark else "#e2e0da"
+        accent = "#d97757"
+        text_primary = "#ecece9" if dark else "#1a1918"
+        text_secondary = "#a09d94" if dark else "#666460"
+        inner_bg = "#18181a" if dark else "#f9f8f6"
 
         metrics = get_metrics()
         st.markdown(f"""
-        <div style="background: {bg_card}; padding: 12px; border-radius: 10px; margin-bottom: 1rem; border: 1px solid {border_color};">
-            <div style="color: {accent}; font-weight: 600; font-size: 0.85rem; margin-bottom: 8px;">📊 THỐNG KÊ AI</div>
-            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: {text_primary};">
-                <div>👍: <b>{metrics['helpful']}</b></div>
-                <div>👎: <b>{metrics['unhelpful']}</b></div>
-                <div>⚠️: <b>{metrics['escalated']}</b></div>
+        <div style="background: {bg_card}; padding: 16px; border-radius: 12px; margin-bottom: 1.5rem; border: 1px solid {border_color}; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+            <div style="color: {text_secondary}; font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+                <span style="font-size: 1rem;">📊</span> Thống kê Agent
             </div>
-            <div style="font-size: 0.75rem; color: {text_secondary}; margin-top: 5px; text-align: center;">Tổng câu hỏi: {metrics['total']}</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; text-align: center; margin-bottom: 12px;">
+                <div style="background: {inner_bg}; padding: 10px 4px; border-radius: 8px; border: 1px solid {border_color};">
+                    <div style="font-size: 1.1rem; margin-bottom: 2px;">👍</div>
+                    <div style="font-size: 0.95rem; font-weight: 600; color: {text_primary};">{metrics['helpful']}</div>
+                </div>
+                <div style="background: {inner_bg}; padding: 10px 4px; border-radius: 8px; border: 1px solid {border_color};">
+                    <div style="font-size: 1.1rem; margin-bottom: 2px;">👎</div>
+                    <div style="font-size: 0.95rem; font-weight: 600; color: {text_primary};">{metrics['unhelpful']}</div>
+                </div>
+                <div style="background: {inner_bg}; padding: 10px 4px; border-radius: 8px; border: 1px solid {border_color};">
+                    <div style="font-size: 1.1rem; margin-bottom: 2px;">⚠️</div>
+                    <div style="font-size: 0.95rem; font-weight: 600; color: {accent};">{metrics['escalated']}</div>
+                </div>
+            </div>
+            <div style="font-size: 0.75rem; color: {text_secondary}; text-align: center; border-top: 1px solid {border_color}; padding-top: 8px;">
+                Tổng câu hỏi giải quyết: <b style="color: {text_primary};">{metrics['total']}</b>
+            </div>
         </div>
         """, unsafe_allow_html=True)
 
         # Status
         st.markdown("""
-        <div class="status-badge">
+        <div class="status-badge" style="width: fit-content;">
             <div class="status-dot"></div>
-            Online — Sẵn sàng hỗ trợ
+            Online — Sẵn sàng
         </div>
         """, unsafe_allow_html=True)
 
@@ -387,8 +438,8 @@ def render_main():
     # Header
     st.markdown("""
     <div class="main-header">
-        <h1>🎓 AI Trợ Giảng — Lập trình C/C++</h1>
-        <p>Trợ giảng AI thông minh hỗ trợ bạn 24/7 • Hỏi bất cứ điều gì về C/C++ cơ bản</p>
+        <h1>AI Trợ Giảng</h1>
+        <p>Hỗ trợ học tập Lập trình C/C++ với GPT-4</p>
     </div>
     """, unsafe_allow_html=True)
 

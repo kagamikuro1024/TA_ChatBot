@@ -12,10 +12,7 @@ __pycache__/
 dist/
 build/
 
-# FAISS index (generated)
-faiss_index/
-
-#app_data
+# IDE
 app_data/
 
 # IDE

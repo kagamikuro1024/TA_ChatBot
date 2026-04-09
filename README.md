@@ -72,7 +72,7 @@ graph TD
 
 ### Component 1: Project Foundation
 
-#### [MODIFIED] requirements.txt
+#### requirements.txt
 Các dependencies chính (cập nhật mới):
 ```
 langchain>=0.3.0
@@ -84,7 +84,7 @@ python-dotenv>=1.0.0
 streamlit>=1.40.0
 ```
 
-#### [MODIFIED] .gitignore
+#### .gitignore
 Ignore thêm folder database cục bộ: `.env`, `__pycache__`, `faiss_index/`, `.venv/`, `app_data/`
 
 ---
@@ -94,7 +94,7 @@ Ignore thêm folder database cục bộ: `.env`, `__pycache__`, `faiss_index/`, 
 > [!IMPORTANT]
 > Đây là phần cốt lõi quyết định chất lượng trả lời. Tài liệu càng phong phú, Agent trả lời càng chính xác.
 
-#### [NEW] knowledge_base/slides/
+#### knowledge_base/slides/
 Tài liệu bài giảng dạng Markdown, chia theo chủ đề:
 - `01_introduction.md` — Giới thiệu C/C++, cài đặt môi trường
 - `02_variables_datatypes.md` — Biến, kiểu dữ liệu, nhập xuất
@@ -105,27 +105,27 @@ Tài liệu bài giảng dạng Markdown, chia theo chủ đề:
 - `07_structs.md` — Struct, typedef
 - `08_file_io.md` — Đọc ghi file
 
-#### [NEW] knowledge_base/code_samples/
+#### knowledge_base/code_samples/
 Code mẫu cho từng chủ đề (`.c` files)
 
-#### [NEW] knowledge_base/faq.md
+#### knowledge_base/faq.md
 Các câu hỏi thường gặp (FAQ) với câu trả lời chuẩn
 
-#### [NEW] knowledge_base/course_info.json
+#### knowledge_base/course_info.json
 Metadata khóa học: lịch học, link tài liệu, thông tin TA, quy chế,...
 
 ---
 
 ### Component 3: RAG Pipeline (Vector Store)
 
-#### [NEW] rag/indexer.py
+#### rag/indexer.py
 Script nạp tài liệu vào FAISS vector store
 - Dùng `RecursiveCharacterTextSplitter` hoặc `MarkdownHeaderTextSplitter` để chia nhỏ tài liệu
 - Embed bằng `OpenAIEmbeddings`
 - Lưu FAISS index vào thư mục `faiss_index/` để tái sử dụng
 - Có metadata tracking (nguồn tài liệu, chương, loại) để filter khi search
 
-#### [NEW] rag/retriever.py
+#### rag/retriever.py
 Module load FAISS index và thực hiện similarity search
 - `load_vector_store()` — Load index đã lưu
 - `search_documents(query, k=5)` — Tìm tài liệu liên quan nhất
@@ -134,22 +134,22 @@ Module load FAISS index và thực hiện similarity search
 
 ### Component 4: Agent Tools
 
-#### [NEW] tools/search_materials.py — `search_course_materials`
+#### tools/search_materials.py — `search_course_materials`
 - **Input**: Câu hỏi của học viên
 - **Logic**: Dùng RAG retriever tìm trong knowledge base (slides, code mẫu, FAQ)
 - **Output**: Trích dẫn tài liệu liên quan kèm source attribution
 
-#### [NEW] tools/code_analyzer.py — `analyze_code_error`
+#### tools/code_analyzer.py — `analyze_code_error`
 - **Input**: Đoạn code C/C++ bị lỗi + mô tả lỗi
 - **Logic**: Phân tích syntax/logic error, đề xuất fix. Sử dụng context từ knowledge base
 - **Output**: Giải thích lỗi + gợi ý sửa + giải thích kiến thức liên quan
 
-#### [NEW] tools/course_info.py — `get_course_info`
+#### tools/course_info.py — `get_course_info`
 - **Input**: Loại thông tin cần tra cứu (lịch học, link tài liệu, TA info,...)
 - **Logic**: Tra cứu file `course_info.json`
 - **Output**: Thông tin khóa học được format đẹp
 
-#### [MODIFIED] tools/escalation.py — `escalate_to_human_ta`
+#### tools/escalation.py — `escalate_to_human_ta`
 - **Input**: student_question, summary, reason, attempted_solutions
 - **Logic**: Kích hoạt ngay lập tức khi phát hiện sự phức tạp vượt mức, lỗi từ phía nền tảng, hoặc khi người học bất đồng quan điểm, mong muốn báo cáo dispute. Sinh ra Escalation Report một cách cấu trúc.
 - **Output**: Generates report giúp Streamlit App kích hoạt tính năng Xác nhận ở Frontend.
@@ -158,11 +158,11 @@ Module load FAISS index và thực hiện similarity search
 
 ### Component 5: Utilities (Lưu trữ và Gửi Email)
 
-#### [NEW] utils/email_service.py
+#### utils/email_service.py
 - **Chức năng**: Gửi email thông báo cho TA phụ trách (ví dụ: `26ai.trunglvq@vinuni.edu.vn`) thông qua thư viện `smtplib` khi học viên chốt yêu cầu Escalation.
 - **Bảo mật**: Lấy thông số SMTP server, `EMAIL_USER` và `EMAIL_PASS` tự động từ quá trình cấu hình `.env`.
 
-#### [NEW] utils/storage.py
+#### utils/storage.py
 - **Chức năng**:
   - Lưu và tracking Metrics (Số lần được dùng AI, số đánh giá Hữu ích 👍, Không hữu ích 👎, Số lượt leo thang ⚠️) bằng json tại `app_data/metrics.json`.
   - Quản lý phiên Session của User. Lưu lại lịch sử hội thoại dưới dạng JSON lưu từng file ở `app_data/chat_histories/` qua hàm `save_chat_session()` và `load_chat_session()`.
@@ -171,7 +171,7 @@ Module load FAISS index và thực hiện similarity search
 
 ### Component 6: LangGraph Agent
 
-#### [MODIFIED] agent.py
+#### agent.py
 Agent chính với kiến trúc LangGraph.
 
 **System Prompt chi tiết** bao gồm:
@@ -184,7 +184,7 @@ Agent chính với kiến trúc LangGraph.
 
 ### Component 7: Streamlit Web UI
 
-#### [MODIFIED] app.py
+#### app.py
 Giao diện chat tích hợp sâu các tiện ích mở rộng:
 - **Chat Interface**: Stream text từ AI. Có các nút 👍 👎 ngay dưới từng tin nhắn trả lời để người học đánh giá (cập nhật thông qua `storage.py`).
 - **Human-in-the-Loop Confirmation**: Tính năng chặn AI tự ý đưa thông tin leo thang cho người thật. Giao diện sẽ hiển thị nút ✅ Xác nhận (gọi `send_escalation_email`) hoặc ❌ Hủy bỏ cho người học tự quyết định.
